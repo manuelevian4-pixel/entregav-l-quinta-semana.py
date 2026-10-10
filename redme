@@ -1,0 +1,115 @@
+# Sistema de Análise de Dados
+
+Programa em Python que lê um arquivo CSV com **e-mail, CPF, telefone e data**, valida cada campo com **expressões regulares**, trata os erros com **try/except/else/finally** e gera um **relatório final formatado** com os registros válidos, os inválidos e a contagem de cada grupo.
+
+## Estrutura do projeto
+
+| Arquivo | Para que serve |
+|---|---|
+| `analise_dados.py` | Script principal (leitura, validação, exceções e relatório) |
+| `dados.csv` | Arquivo de entrada de exemplo (4 registros) |
+| `dados_sem_coluna.csv` | Arquivo para testar o erro de coluna ausente (`KeyError`) |
+| `relatorio.txt` | Relatório gerado pela última execução |
+| `README.md` | Este documento |
+
+## Como executar
+
+```
+python analise_dados.py              # lê o dados.csv
+python analise_dados.py outro.csv    # lê outro arquivo
+```
+
+Para testar os erros tratados:
+
+```
+python analise_dados.py nao_existe.csv        # FileNotFoundError
+python analise_dados.py dados_sem_coluna.csv  # KeyError
+```
+
+## Validações aplicadas (regex)
+
+Todos os padrões usam *raw strings* (`r"..."`) e são ancorados com `^` e `$`, para que o campo inteiro seja conferido e não apenas um pedaço dele.
+
+| Campo | Padrão | Por quê |
+|---|---|---|
+| E-mail | `^[\w.+-]+@[\w-]+(\.[\w-]+)+$` | `[\w.+-]+` aceita a parte antes do `@`; depois do `@` exige o domínio e pelo menos um `.sufixo` |
+| CPF | `^\d{3}\.\d{3}\.\d{3}-\d{2}$` | Exige o formato `000.000.000-00`. Por isso `234-123-215-23` (com hífens) é recusado |
+| Telefone | `^\(\d{2}\)\s\d{4,5}-\d{4}$` | Exige DDD entre parênteses, um espaço (`\s`), 8 ou 9 dígitos e o hífen: `(98) 98765-4321` ou `(98) 3234-5678` |
+| Data | `^\d{2}/\d{2}/\d{4}$` | Exige o formato `dd/mm/aaaa`. Depois do regex, `datetime.strptime` confirma que a data existe (por isso `31/02/2001` é recusada) |
+
+**Limitação conhecida:** o CPF é validado apenas pelo **formato**. Os dígitos verificadores não são calculados.
+
+## Exceções tratadas
+
+| Exceção | Onde acontece | Como é tratada |
+|---|---|---|
+| `FileNotFoundError` | Ao abrir o arquivo em `ler_registros()` | O `main()` mostra "o arquivo não foi encontrado" e encerra sem quebrar |
+| `KeyError` | Quando falta uma coluna obrigatória no cabeçalho do CSV | O `main()` mostra o nome da coluna ausente |
+| `ValueError` | No `strptime` da data, quando ela passa no regex mas não existe | A função `validar_data()` captura e devolve `False` |
+| `FormatoInvalidoError` | Campo fora do formato, ou linha com mais valores que colunas | O registro é marcado como inválido no relatório |
+
+### Exceção personalizada
+
+`FormatoInvalidoError` herda de `Exception` e carrega a mensagem "Um ou mais campos possuem formato inválido.", que aparece no relatório de cada registro recusado:
+
+```python
+class FormatoInvalidoError(Exception):
+    def __init__(self):
+        super().__init__("Um ou mais campos possuem formato inválido.")
+```
+
+### Uso de try/except/else/finally
+
+No `main()`:
+- **`try`**: lê o arquivo e analisa os registros.
+- **`except`**: trata `FileNotFoundError` e `KeyError`.
+- **`else`**: só executa se não houve erro; gera, mostra e salva o relatório.
+- **`finally`**: sempre executa e mostra "Análise finalizada.", com ou sem erro.
+
+## Exemplo de entrada (`dados.csv`)
+
+```csv
+email,cpf,telefone,data
+manu@gmail.com,234-123-215-23,(98) 91234-5678,15/08/2000
+larissa@email.com,123.456.789-09,(98) 3234-5678,20/10/2002
+thayla@gmail.com,456.345.237-45,(98) 98234-5678,22/05/1999
+emailinvalido,134,999,2022
+```
+
+## Exemplo de saída (relatório gerado)
+
+```
+===== RELATÓRIO FINAL =====
+Registros válidos: 2
+Registros inválidos: 2
+manu@gmail.com - Inválido: Um ou mais campos possuem formato inválido.
+larissa@email.com - Válido
+thayla@gmail.com - Válido
+emailinvalido - Inválido: Um ou mais campos possuem formato inválido.
+```
+
+Por que cada registro deu esse resultado:
+- `manu@gmail.com`: inválido, o CPF usa hífens em vez de pontos.
+- `larissa@email.com`: válido, todos os campos estão no formato.
+- `thayla@gmail.com`: válido, todos os campos estão no formato.
+- `emailinvalido`: inválido, não tem `@` e o CPF, o telefone e a data estão fora do formato.
+
+Quando o arquivo não existe, a saída é:
+
+```
+Lendo o arquivo: nao_existe.csv
+
+Erro: o arquivo 'nao_existe.csv' não foi encontrado.
+
+Análise finalizada.
+```
+
+Quando falta uma coluna:
+
+```
+Lendo o arquivo: dados_sem_coluna.csv
+
+Erro: coluna ausente no CSV: 'cpf'
+
+Análise finalizada.
+```

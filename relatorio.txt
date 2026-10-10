@@ -1,0 +1,7 @@
+===== RELATÓRIO FINAL =====
+Registros válidos: 2
+Registros inválidos: 2
+manu@gmail.com - Inválido: Um ou mais campos possuem formato inválido.
+larissa@email.com - Válido
+thayla@gmail.com - Válido
+emailinvalido - Inválido: Um ou mais campos possuem formato inválido.
